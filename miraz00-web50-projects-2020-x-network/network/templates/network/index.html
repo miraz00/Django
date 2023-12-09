@@ -1,0 +1,321 @@
+{% extends "network/layout.html" %}
+
+{%  block title %}{% if profile %}{{ profile_user.username }} Profile{% endif %}{% endblock %}
+
+{% block body %}
+    {% if not following and not profile and request.user.is_authenticated %}
+        <div class="mb-3">
+        {% for field in create_post %}
+            <form class="d-flex" style="column-gap: 20px" method="post">
+                {% csrf_token %}
+                    <div class="form-floating">
+                        {{ field }}
+                        {{ field.label_tag }}
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="align-self: center"  onclick="return pageCheck()">Post</button>
+            </form>
+            {% if field.errors %}
+                {% for error in field.errors %}
+                    <span class="form-error" style="color: red"> {{ error }} </span>
+                {% endfor %}
+            {% endif %}
+        {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if profile %}
+        <div class="mb-3 d-flex justify-content-around">
+            <span><span id="followers-count">{{ profile_user.followers.count }}</span> Followers </span>
+            <span>{{ profile_user.following.count }} Following</span>
+            {% if not profile_user == request.user and request.user.is_authenticated %}
+                {% if request.user in profile_user.followers.all %}
+                    <button type="button" id="follow-btn" class="btn btn-outline-dark" onclick="unfollow()">Unfollow</button>
+                {% else  %}
+                    <button type="button" id="follow-btn" class="btn btn-outline-dark" onclick="follow()">Follow</button>
+                {% endif %}
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <div id="posts">
+        {% for post in posts %}
+            <div class="mb-3 p-4" style="border-style: groove" data-post-id={{ post.id }} >
+                <h4 style="display: flex">
+                    <a href="{% url "profile" post.user.username %}" style="text-decoration: none;color: inherit">{{ post.user.username }}</a>
+                    {% if post.user == request.user %}
+                        <span onclick="edit(this)" style="margin-left: auto">✏️</span>
+                    {% endif %}
+                </h4>
+                <hr>
+                <pre>{{ post.content }}</pre>
+                <hr>
+                <div class="d-flex justify-content-between">
+                    <span><span class="like-button" {% if request.user in post.liked_by.all %}onclick="unlike(this)">♥︎{% else %}onclick="like(this)">♡{% endif %}</span><span class="like-count">{{ post.liked_by.count }}</span></span>
+                    <span class="blockquote-footer">{{ post.datetime }}</span>
+                </div>
+            </div>
+
+            {% empty %}
+                <div style="text-align: center;color: rgb(128,128,128)">-- No posts yet --</div>
+        {% endfor %}
+    </div>
+
+
+    <nav aria-label="Page navigation example" data-current-page="{{ page }}" id="page-nav">
+        <ul class="pagination justify-content-end">
+            <li class="page-item {% if not prev %}disabled{% endif %}">
+                <button class="page-link" id="prev-btn" onclick="getPage('prev')">Previous</button>
+            </li>
+            <li class="page-item {% if not next %}disabled{% endif %}">
+                <button class="page-link" id="next-btn" onclick="getPage('next')">Next</button>
+            </li>
+        </ul>
+    </nav>
+
+    <script>
+        function getPage(action) {
+            const pageNavElement = document.getElementById("page-nav")
+            const currentPage = parseInt(pageNavElement.dataset.currentPage)
+            const page = action === "next"?currentPage + 1:currentPage - 1
+
+            fetch({% if not following and not profile %}`/get_page/all/${page}`{% elif following %}`/get_page/following/${page}`{% else %}`/get_page/profile/${page}/{{ profile_user.username }}`{% endif %})
+            .then(response => response.json())
+            .then(data => {
+                document.querySelector("#posts").innerHTML = data.html
+                if (data.next) {
+                    document.getElementById("next-btn").parentElement.classList.remove("disabled")
+                }
+                else {
+                   document.getElementById("next-btn").parentElement.classList.add("disabled")
+                }
+                if (data.prev) {
+                   document.getElementById("prev-btn").parentElement.classList.remove("disabled")
+                }
+                else {
+                   document.getElementById("prev-btn").parentElement.classList.add("disabled")
+                }
+                pageNavElement.dataset.currentPage = page
+                window.scroll({
+                    top: 0,
+                    left: 0,
+                    behavior: "smooth",
+                });
+            });
+        }
+
+        function pageCheck() {
+            if (parseInt(document.getElementById("page-nav").dataset.currentPage) !== 1) {
+                fetch('{% url "ajax post" %}', {
+                    method: 'POST',
+                    headers: {
+                        "X-CSRFToken": getCookie("csrftoken"),
+                    },
+                    body: JSON.stringify({
+                        content: document.getElementById("id_content").value
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const containerTag = document.querySelector(".container")
+                    if (data.success) {
+                        containerTag.insertAdjacentHTML("afterbegin", `
+                            <div class="alert alert-dismissible alert-success fade show" id="message-alert" role="alert">
+                                Your post has been uploaded successfully.
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        `)
+                        document.getElementById("id_content").value = ""
+                    }
+                    else {
+                        containerTag.insertAdjacentHTML("afterbegin", `
+                            <div class="alert alert-dismissible alert-danger fade show" id="message-alert" role="alert">
+                                Your post is empty.
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        `)
+                    }
+                })
+                return false
+            }
+            return true
+        }
+    </script>
+
+    {% if profile %}
+        <script>
+            function follow() {
+                fetch('{% url "follow" %}', {
+                    method: 'POST',
+                    headers: {
+                      "X-CSRFToken": getCookie("csrftoken")
+                    },
+                    body: JSON.stringify({
+                        id: {{ profile_user.id }}
+                    })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        const followBtn  = document.getElementById("follow-btn")
+                        followBtn.innerText = "Unfollow"
+                        followBtn.setAttribute("onclick", "unfollow()")
+                        const countElement = document.getElementById("followers-count");
+                        countElement.innerText = parseInt(countElement.innerText) + 1;
+                    }
+                })
+            }
+
+            function unfollow() {
+                fetch('{% url "unfollow" %}', {
+                    method: 'POST',
+                    headers: {
+                      "X-CSRFToken": getCookie("csrftoken"),
+                    },
+                    body: JSON.stringify({
+                        id: {{ profile_user.id }}
+                    })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        const followBtn  = document.getElementById("follow-btn")
+                        followBtn.innerText = "Follow"
+                        followBtn.setAttribute("onclick", "follow()")
+                        const countElement = document.getElementById("followers-count");
+                        countElement.innerText = parseInt(countElement.innerText) - 1;
+                    }
+                })
+            }
+        </script>
+    {% endif %}
+
+    {% if request.user.is_authenticated %}
+        <script>
+            function edit(btn) {
+                const preTag = btn.parentElement.nextElementSibling.nextElementSibling
+                const textareaTag = document.createElement('textarea')
+                textareaTag.innerHTML = preTag.innerHTML
+                textareaTag.classList.add("form-control")
+                textareaTag.classList.add("mb-3")
+                preTag.style.display = "none"
+                preTag.insertAdjacentElement("afterend", textareaTag)
+                const insertedTextarea = preTag.nextElementSibling;
+
+                insertedTextarea.insertAdjacentHTML("afterend", `
+                    <button class="btn btn-success" onclick="update(this)">Update</button>
+                    <button class="btn btn-danger" onclick="discard(this)">Discard</button>
+                `)
+
+                insertedTextarea.focus();
+                insertedTextarea.selectionStart = insertedTextarea.selectionEnd = insertedTextarea.value.length;
+            }
+
+            function update(btn) {
+                const postId = btn.parentElement.dataset.postId
+                const textareaTag = btn.previousElementSibling
+                const preTag = textareaTag.previousElementSibling
+                const content = textareaTag.value
+                fetch('{% url "update post" %}', {
+                    method: 'PUT',
+                    headers: {
+                      "X-CSRFToken": getCookie("csrftoken"),
+                    },
+                    body: JSON.stringify({
+                        postId: postId,
+                        content: content
+                    })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        textareaTag.nextElementSibling.remove()
+                        textareaTag.nextElementSibling.remove()
+                        preTag.innerHTML = content
+                        textareaTag.remove()
+                        preTag.style.display ="block"
+                        preTag.insertAdjacentHTML("afterend", `<span style="color: green">Updated successfully!</span>`)
+                        const spanMsg = preTag.nextElementSibling
+                        setTimeout(function () {
+                            spanMsg.remove()
+                        }, 3000)
+                    }
+                    else {
+                        textareaTag.nextElementSibling.nextElementSibling.insertAdjacentHTML("afterend", `<span style="color: red">&nbsp;&nbsp;&nbsp;Update failed!</span>`)
+                        const spanMsg = textareaTag.nextElementSibling.nextElementSibling.nextElementSibling
+                        setTimeout(function () {
+                            spanMsg.remove()
+                        }, 3000)
+                    }
+                })
+            }
+
+            function discard(btn) {
+                const textareaTag = btn.previousElementSibling.previousElementSibling
+                const preTag = textareaTag.previousElementSibling
+                textareaTag.nextElementSibling.remove()
+                textareaTag.nextElementSibling.remove()
+                textareaTag.remove()
+                preTag.style.display ="block"
+            }
+        </script>
+
+        <script>
+            function like(btn) {
+                const postId = btn.parentElement.parentElement.parentElement.dataset.postId
+                const likeCountElement = btn.nextElementSibling
+                const likeCount = parseInt(likeCountElement.innerHTML)
+                fetch('{% url "like post" %}', {
+                    method: 'PUT',
+                    headers: {
+                      "X-CSRFToken": getCookie("csrftoken"),
+                    },
+                    body: JSON.stringify({
+                        postId: postId
+                    })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        likeCountElement.innerHTML = likeCount + 1
+                        btn.innerHTML = "♥︎"
+                        btn.setAttribute("onclick", "unlike(this)")
+                    }
+                })
+            }
+
+            function unlike(btn) {
+                const postId = btn.parentElement.parentElement.parentElement.dataset.postId
+                const likeCountElement = btn.nextElementSibling
+                const likeCount = parseInt(likeCountElement.innerHTML)
+                fetch('{% url "unlike post" %}', {
+                    method: 'PUT',
+                    headers: {
+                      "X-CSRFToken": getCookie("csrftoken"),
+                    },
+                    body: JSON.stringify({
+                        postId: postId
+                    })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        likeCountElement.innerHTML = likeCount - 1
+                        btn.innerHTML = "♡"
+                        btn.setAttribute("onclick", "like(this)")
+                    }
+                })
+            }
+        </script>
+    {% else %}
+        <script>
+            function like(btn) {
+                btn.parentElement.parentElement.insertAdjacentHTML("afterend", `
+                    <span style="color: red">Login first!</span>
+                `)
+                setTimeout(function () {
+                    btn.parentElement.parentElement.nextElementSibling.remove()
+                }, 3000)
+            }
+        </script>
+    {% endif %}
+{% endblock %}

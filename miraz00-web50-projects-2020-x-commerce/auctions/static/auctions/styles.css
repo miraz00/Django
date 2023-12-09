@@ -1,0 +1,24 @@
+body {
+    padding: 10px;
+}
+
+/*has:() pseudo-class is from Selectors level 4(not supported by all browsers)*/
+.form-group:has(.form-error) input{
+    border-color: red;
+}
+
+.form-group:has(input[required]) label::after {
+    content: ' *';
+    color: red;
+}
+
+.display-5 {
+    font-size: 1.5rem;
+    font-weight: 300;
+    line-height: 1.2;
+}
+
+label[for="id_your_bid"]::after {
+    content: '' !important;
+    color: red;
+}

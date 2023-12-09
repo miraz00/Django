@@ -1,0 +1,19 @@
+textarea {
+    min-height: 400px;
+}
+
+#emails-view > div[data-mail-id]{
+    display: flex;
+    padding: 1rem;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    /* border-radius: 30px; */
+    border-bottom-style: inset;
+    column-gap: 50px;
+}
+
+#emails-view > div[data-mail-id]:hover {
+    background-color: black !important;
+    color: white;
+    cursor: pointer;
+}

@@ -1,0 +1,18 @@
+{% extends "encyclopedia/layout.html" %}
+
+{% block title %}
+    Search Results
+{% endblock %}
+
+{% block body %}
+    {% if not results %}
+        <div class="alert alert-danger" style="width: 90%" role="alert">
+            No results found!
+        </div>
+    {% else %}
+        <span style="color: #1128;font-style: italic">Showing {{ results | length }} results</span><br>
+        {% for result in results %}
+            <li><a href="{% url "encyclopedia:show page" result %}" >{{ result }}</a></li>
+        {% endfor %}
+    {% endif %}
+{% endblock %}

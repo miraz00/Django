@@ -1,0 +1,27 @@
+{% extends "encyclopedia/layout.html" %}
+
+{% block title %}
+    Create Page
+{% endblock %}
+
+{% block body %}
+    {% if error %}
+        <div class="alert alert-warning" style="width: 80%" role="alert">
+             {{ error }}
+        </div>
+    {% endif %}
+    <form action="{% if not edit %}{% url "encyclopedia:create page" %} {% else %} {% url "encyclopedia:edit page" name=edit %} {% endif %}" method="post">
+        {% csrf_token %}
+        {% for field in form %}
+            {% if forloop.counter0 == 1 %}
+                {% if edit %}
+                   <button type="submit" tabindex="-1" class="btn btn-success">Update</button>
+                {% else %}
+                    <button type="submit" tabindex="-1" class="btn btn-primary">Create</button>
+                {% endif %}
+            {% endif %}
+            <label for="{{ field.id_for_label }}">{{ field.name | capfirst }}: </label>
+            {{ field }}
+        {% endfor %}
+    </form>
+{% endblock %}

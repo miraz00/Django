@@ -1,0 +1,21 @@
+{% extends "encyclopedia/layout.html" %}
+
+{% block title %}
+    {{ page_name }}
+{% endblock %}
+
+{% block body %}
+    {% if success_msg %}
+        <div class="alert alert-success" style="width: 90%" role="alert">
+             {{ success_msg }}
+        </div>
+    {% endif %}
+    {% if page %}
+        <a href="{% url "encyclopedia:edit page" name=page_name %}" style="margin-left: 90%"><span>edit</span></a>
+        <section>{{ page | safe }}</section>
+    {% else %}
+        <div class="alert alert-danger" style="width: 90%" role="alert">
+            Page not found!
+        </div>
+    {% endif %}
+{% endblock %}

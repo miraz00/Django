@@ -1,0 +1,145 @@
+{% extends "auctions/layout.html" %}
+
+{% load auction_extras %}
+
+{% block title %}
+{{ item.title }}
+{% endblock %}
+
+{% block body %}
+
+{% if not item.active %}
+    {% if item.current_bid %}
+        {% if item.bidder == request.user %}
+            <div class="alert alert-success" role="alert">
+                Congratulations! You won the bid.
+            </div>
+        {% else %}
+            <div class="alert alert-dark" role="alert">
+                The auction was closed with {{ item.bidder.username }} as the winner!
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="alert alert-dark" role="alert">
+            The auction was closed without any winner!
+        </div>
+    {% endif %}
+{% endif %}
+
+<div class="d-flex mb-3 justify-content-between">
+    <div>
+        <span class="display-4">{{ item.title }}</span>
+        {% if item.category %}
+            <a style="vertical-align: top" href="{% url "view category listing" item.category %}">🔖{{ item.category }}</a>
+        {% endif %}
+    </div>
+    <div>
+        {% if item.active %}
+            {% if request.user.is_authenticated %}
+                {% if item.user == request.user %}
+                    <form action="{% url "view listing" item.id %}" method="post">
+                        {% csrf_token %}
+                        <button class="btn btn-danger">Close list</button>
+                        <input type="hidden" name="action" value="close_list">
+                    </form>
+                {% else %}
+                    {% if item in request.user.watchlists.all %}
+                        <form action="{% url "view listing" item.id %}" method="post">
+                            {% csrf_token %}
+                           <button class="btn btn-primary" type="submit">In Watchlist</button>
+                           <input type="hidden" name="action" value="remove_watchlist">
+                       </form>
+                    {% else %}
+                        <form action="{% url "view listing" item.id %}" method="post">
+                            {% csrf_token %}
+                            <button class="btn btn-success" type="submit">Add to watchlist</button>
+                            <input type="hidden" name="action" value="add_watchlist">
+                        </form>
+                    {% endif %}
+                {% endif %}
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+{% if item.url %}
+    <div class="">
+        <img src="{{ item.url }}" style="max-width: 300px;height: auto" alt="image of {{ item.title }}">
+    </div>
+{% endif %}
+
+{% if item.active %}
+<div class=" flex-column mt-3 mb-3">
+    {% if item.current_bid %}
+        <span class="display-5">${{ item.current_bid }}</span>
+        {% if request.user.is_authenticated %}
+            <br>
+                {% if item.bidder == request.user %}
+                <span class="small alert-success">
+                    Your bid is the highest bid.
+                </span>
+                {% elif item.bids.all|has_bid:request.user.bids.all %}
+                    <span class="small alert-warning">
+                        There is a higher bid from <span>{{ item.bidder.username }}</span>.<br>
+                    </span>
+                    <span class="small alert-info">Your bid was <span>${{ request.user.bids.all|max_bid:item }}</span></span>
+                {% endif %}
+        {% endif %}
+    {% else %}
+        <span class="display-5">${{ item.starting_bid }}</span>
+    {% endif %}
+    <span class="small text-monospace">
+        <br>
+        {% if item.bids.count %}
+            There are {{ item.bids.count }} bid(s) so far.<br>
+            Bid started at ${{ item.starting_bid }}
+        {% else %}
+            No bids yet.
+        {% endif %}
+    </span>
+</div>
+
+{% if request.user.is_authenticated %}
+    {% if not item.user == request.user %}
+    <div class="">
+        <form action="{% url "view listing" item.id %}" method="post" class="d-flex" style="column-gap: 10px;margin-left: -5px">
+            {% csrf_token %}
+            {{ bid_form }}
+            <button type="submit" class="btn btn-primary" style="height: 30px;display: flex;line-height: 1;">Submit</button>
+        </form>
+    </div>
+    {% endif %}
+{% endif %}
+{% else %}
+<div class="display-5 mt-3 mb-3">${% if item.current_bid %}{{ item.current_bid }}{% else %}{{ item.starting_bid }}{% endif %}</div>
+{% endif %}
+<div class="mb-3 text-muted">Auctioneer: {{ item.user.username }}</div>
+{% if item.description %}
+    <div>
+      <h2>Description</h2>
+      <pre>{{ item.description }}</pre>
+    </div>
+{% endif %}
+
+<div>
+    <h2>Comments</h2>
+    {% if item.comments.count %}
+        {% for comment in item.comments.all %}
+            <div style="font-style: italic">{{ comment.user.username }}{% if comment.user == item.user %} <span style="font-style: normal"> ⭐️</span>{% elif comment.user == request.user %} (you){% endif %}</div>
+            <div class="blockquote-footer">{{ comment.comment }}</div>
+            <span style="font-size: 64%;color: rgb(128,128,128)">{{ comment.datetime }}</span><hr>
+        {% endfor %}
+    {% else %}
+        <span style="color: rgb(128,128,128)" class="small text-monospace">There are no comments yet.</span>
+    {% endif %}
+    {% if request.user.is_authenticated %}
+        <form action="{% url "view listing" item.id %}" method="post">
+            {% csrf_token %}
+            {{ comment_form }}
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+    {% endif %}
+</div>
+
+
+{% endblock %}

@@ -1,0 +1,11 @@
+div.form-floating {
+    flex: 1
+}
+
+a:hover {
+    text-decoration: underline !important;
+}
+
+div[data-post-id] span[onclick]:hover {
+    cursor: pointer;
+}

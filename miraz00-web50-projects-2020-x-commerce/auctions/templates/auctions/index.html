@@ -1,0 +1,46 @@
+{% extends "auctions/layout.html" %}
+
+{% block body %}
+
+    <div class="mr-4 ml-4">
+
+        <h2 style="margin-left: -15px">{{ page }}</h2>
+
+        {% if categories %}<ul>
+            {% for category in categories %}
+                <li><a href="{% url "view category listing" category %}">{{ category }}</a></li>
+                {% empty %}
+                    <div class="small text-black-50" style="text-align: center">-- No categories available --</div>
+            {% endfor %}</ul>
+        {% else %}
+
+       {% for item in items %}
+            <div class="row mt-2 mb-2 pt-4 pb-4 pl-3 pr-3 border border-dark">
+                <div class="col-lg-4">
+                    <section class="mb-4" {% if page == "Watchlist" %}style="display: flex;column-gap: 15px;white-space: nowrap"{% endif %}>
+                        <a href="{% url "view listing" item.id %}"> <strong class="display-5">{{ item.title }}</strong></a>
+                        {% if page == "Watchlist" %}
+                            <form action="{% url "view watchlist" %}" method="post" style="margin-top: -5px">
+                                {% csrf_token %}
+                                <input type="hidden" name="id" value="{{ item.id }}">
+                                <button class="btn btn-outline-danger" style="position: absolute;z-index: 10">Remove from watchlist</button>
+                            </form>
+                        {% endif %}
+                    </section>
+                    {% if item.url %}
+                        <img src="{{ item.url }}" class="border rounded" width="50%" height="auto" alt="image of {{ item.title }}">
+                    {% endif %}
+                </div>
+                <div class="col-lg-8 d-flex flex-column justify-content-between align-items-end">
+                    <span><strong class="justify-content-center display-3">${% if item.current_bid %}{{ item.current_bid }}{% else %}{{ item.starting_bid }}{% endif %}</strong></span>
+                    <span class="small" style="color: rgb(128, 128, 128)">Listed on {{ item.datetime }}</span>
+                </div>
+            </div>
+            {% empty %}
+                <div class="small text-black-50" style="text-align: center">-- {% if page == "Watchlist" %}No items in watchlist{% else %}No active listings{% endif %} --</div>
+       {% endfor %}
+
+        {% endif %}
+    </div>
+
+{% endblock %}

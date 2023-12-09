@@ -1,0 +1,16 @@
+{# Form styled with bootstrap classes #}
+{% for field in form %}
+    {% if field.field.widget.input_type != 'hidden' %}
+        <div class="form-group">
+            {{ field.label_tag }}
+            {{ field }}
+             {% if field.errors %}
+                {% for error in field.errors %}
+                    <span class="form-error" style="color: red"> {{ error }} </span>
+                {% endfor %}
+            {% endif %}
+        </div>
+    {% else %}
+        {{ field }}
+    {% endif %}
+{% endfor %}
